@@ -71,7 +71,7 @@ def robot_init():
         try:
             print "[+] Initializing robot arm...",
             robot = usb.core.find(idVendor=0x1267, idProduct=0x0001)
-            if dev is None:
+            if robot is None:
                 raise SystemError('robot arm not found')
             robot.set_configuration()
             robot_uninitialized = False
