@@ -9,6 +9,19 @@ from ps3 import *
 
 
 # robot arm procedures
+procs = {}
+procs['reset']               = 0x00,0x00,0x00
+procs['light_on']            = 0x00,0x00,0x01
+procs['grip_close']          = 0x01,0x00,0x00
+procs['grip_open']           = 0x02,0x00,0x00
+procs['wrist_up']            = 0x04,0x00,0x00
+procs['wrist_down']          = 0x08,0x00,0x00
+procs['elbow_up']            = 0x10,0x00,0x00
+procs['elbow_down']          = 0x20,0x00,0x00
+procs['shoulder_up']         = 0x40,0x00,0x00
+procs['shoulder_down']       = 0x80,0x00,0x00
+procs['rotate_clockwise']    = 0x00,0x01,0x00
+procs['rotate_cclockwise']   = 0x00,0x02,0x00
 
 reset                  = 0x00,0,0
 light_on               = 0x00,0,1
@@ -24,7 +37,7 @@ rotate_clockwise       = 0x00,0x01,0
 rotate_cclockwise      = 0x00,0x02,0
 
 
-def robot_cmd(robot,procedure):
+def robot_cmd(robot,procedure, nolog=False):
     '''
     send bytes along usb cable to robot arm
     if bytesout (the number of bytes written) is 3 all is well
@@ -32,19 +45,21 @@ def robot_cmd(robot,procedure):
     '''
 
     bytesout = robot.ctrl_transfer(0x40, 6, 0x100, 0, procedure, 1000)
+    
+    proc_name = list(procs.keys())[list(procs.values()).index(procedure)]
 
     if bytesout == 3:
+        if nolog == False:
+            print "successful %s" % proc_name
         return True
     else:
+        print "failed %s" % proc_name
         return False
 
 
 
-
 def ps3_init():
-
     ps3_uninitialized = True
-
     while ps3_uninitialized:
 
         try:
@@ -57,15 +72,13 @@ def ps3_init():
             print "oh no... %s" % e
             ps3_uninitialized = True
 
-        time.sleep(3)
-        
+        time.sleep(5)
     return p
         
 
+
 def robot_init():
-
     robot_uninitialized = True
-
     while robot_uninitialized:
 
         try:
@@ -80,10 +93,11 @@ def robot_init():
             print "oh no... %s" % e
             robot_uninitialized = True
         
-        time.sleep(3)
-        
+        time.sleep(5)
     return robot
-        
+
+
+
 
 # ctrl.py ENTRYPOINT
 
@@ -104,16 +118,10 @@ def main():
 
         if p.a_joystick_left_y > 0:
             #print "moved left joystick Y DOWN!" 
-            if robot_cmd(r, elbow_down):
-                print "LEFT JOYSTICK DOWN moving elbow down"
-            else:
-                print "LEFT JOYSTICK DOWN possible error sending data..."
+            robot_cmd(r, procs['elbow_down'])
         elif p.a_joystick_left_y < 0:
             #print "moved left joystick Y UP!"
-            if robot_cmd(r,elbow_up):
-                print "LEFT JOYSTICK UP moving elbow up"
-            else:
-                print "LEFT JOYSTICK DOWN possible error sending data..."
+            robot_cmd(r, procs['elbow_up'])
 
         #if p.a_joystick_right_x > 0:
         #    print "moved right joystick X RIGHT!"
@@ -189,7 +197,7 @@ def main():
 
         else:
             # stop moving
-            robot_cmd(r,reset)
+            robot_cmd(r,reset, nolog=True)
 
 
         # pause for 10ms before starting
