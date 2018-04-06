@@ -8,30 +8,6 @@ import time
 from ps3 import *
 
 
-# initialize robot arm and ps3 controller
-
-try:
-    print "[+] Initializing robot arm...",
-    dev = usb.core.find(idVendor=0x1267, idProduct=0x0001)
-    if dev is None:
-        raise SystemError('robot arm not found')
-    dev.set_configuration()
-    print "DONE"
-except Exception as e:
-    print "oh no... %s" % e
-    exit(0)
-
-try:
-    print "[+] Initializing ps3...",
-    print "..."
-    p = ps3()
-    print "DONE"
-except Exception as e:
-    print "oh no... %s" % e
-
-
-
-
 # robot arm procedures
 
 reset                  = 0x00,0,0
@@ -48,14 +24,14 @@ rotate_clockwise       = 0x00,0x01,0
 rotate_cclockwise      = 0x00,0x02,0
 
 
-def robot_cmd(procedure):
+def robot_cmd(robot,procedure):
     '''
     send bytes along usb cable to robot arm
     if bytesout (the number of bytes written) is 3 all is well
     because we're trying to write 3 bytes
     '''
 
-    bytesout = dev.ctrl_transfer(0x40, 6, 0x100, 0, procedure, 1000)
+    bytesout = robot.ctrl_transfer(0x40, 6, 0x100, 0, procedure, 1000)
 
     if bytesout == 3:
         return True
@@ -65,7 +41,56 @@ def robot_cmd(procedure):
 
 
 
+def ps3_init():
+
+    ps3_uninitialized = True
+
+    while ps3_uninitialized:
+
+        try:
+            print "[+] Initializaing ps3 controller...",
+            print "..."
+            p = ps3()
+            print "DONE"
+            ps3_uninitialized = False
+        except Exception as e:
+            print "oh no... %s" % e
+            ps3_uninitialized = True
+
+        time.sleep(3)
+        
+    return p
+        
+
+def robot_init():
+
+    robot_uninitialized = True
+
+    while robot_uninitialized:
+
+        try:
+            print "[+] Initializing robot arm...",
+            robot = usb.core.find(idVendor=0x1267, idProduct=0x0001)
+            if dev is None:
+                raise SystemError('robot arm not found')
+            robot.set_configuration()
+            robot_uninitialized = False
+            print "DONE"
+        except Exception as e:
+            print "oh no... %s" % e
+            robot_uninitialized = True
+        
+        time.sleep(3)
+        
+    return robot
+        
+
+# ctrl.py ENTRYPOINT
+
 def main():
+    
+    r = robot_init()
+    p = ps3_init()
 
     while True:
 
@@ -79,13 +104,13 @@ def main():
 
         if p.a_joystick_left_y > 0:
             #print "moved left joystick Y DOWN!" 
-            if robot_cmd(elbow_down):
+            if robot_cmd(r, elbow_down):
                 print "LEFT JOYSTICK DOWN moving elbow down"
             else:
                 print "LEFT JOYSTICK DOWN possible error sending data..."
         elif p.a_joystick_left_y < 0:
             #print "moved left joystick Y UP!"
-            if robot_cmd(elbow_up):
+            if robot_cmd(r,elbow_up):
                 print "LEFT JOYSTICK UP moving elbow up"
             else:
                 print "LEFT JOYSTICK DOWN possible error sending data..."
@@ -97,13 +122,13 @@ def main():
 
         elif p.a_joystick_right_y > 0:
             #print "moved right joystick Y DOWN!" 
-            if robot_cmd(wrist_down):
+            if robot_cmd(r,wrist_down):
                 print "RIGHT JOYSTICK DOWN moving wrist down"
             else:
                 print "RIGHT JOYSTICK DOWN possible error sending data..."
         elif p.a_joystick_right_y < 0:
             #print "moved right joystick Y UP!"
-            if robot_cmd(wrist_up):
+            if robot_cmd(r,wrist_up):
                 print "RIGHT JOYSTICK UP moving wrist up"
             else:
                 print "RIGHT JOYSTICK UP possible error sending data..."
@@ -111,16 +136,16 @@ def main():
 
         elif p.left:
             print "LEFT DPAD moving counter clockwise"
-            robot_cmd(rotate_cclockwise)
+            robot_cmd(r,rotate_cclockwise)
         elif p.right:
             print "RIGHT DPAD moving clockwise"
-            robot_cmd(rotate_clockwise)
+            robot_cmd(r,rotate_clockwise)
         elif p.up:
             print "UP DPAD moving shoulder up"
-            robot_cmd(shoulder_up)
+            robot_cmd(r,shoulder_up)
         elif p.down:
             print "DOWN DPAD moving shoulder down"
-            robot_cmd(shoulder_down)
+            robot_cmd(r,shoulder_down)
 
 
         elif p.select:
@@ -133,21 +158,21 @@ def main():
 
         elif p.l2:
             print "L2 closing grip"
-            robot_cmd(grip_close)
+            robot_cmd(r,grip_close)
         elif p.r2:
             print "R2 opening grip"
-            robot_cmd(grip_open)
+            robot_cmd(r,grip_open)
         elif p.l1:
             print "L1 sending light_on"
-            robot_cmd(light_on)
+            robot_cmd(r,light_on)
         elif p.r1:
             print "R1 sending light_on"
-            robot_cmd(light_on)
+            robot_cmd(r,light_on)
 
 
         elif p.triangle:
             print "TRIANGLE sending reset"
-            robot_cmd(reset)
+            robot_cmd(r,reset)
         elif p.circle:
             print "circle pressed"
         elif p.cross:
@@ -164,10 +189,10 @@ def main():
 
         else:
             # stop moving
-            robot_cmd(reset)
+            robot_cmd(r,reset)
 
 
-        # pause for 100ms before starting
+        # pause for 10ms before starting
         # over and reading ps3 controller state again
         time.sleep(.01)
 
